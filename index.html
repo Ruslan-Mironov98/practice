@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WS-Client</title>
+</head>
+<body>
+  <div id="intro">Выберите ключевое слово для загрузки контента</div>
+ 
+  <button onclick="getUrls('car')">Car</button>
+  <button onclick="getUrls('boat')">Boat</button>
+  <button onclick="getUrls('moto')">Moto</button>
+ 
+  <div id="urlsButtons"></div>
+  <button onclick="show()">Показать хранилище</button>
+  <div id="show"></div>
+  <div id="show2"></div>
+
+  <style>
+  #urlsButtons{
+    margin-bottom: 30px;
+  }
+  button {
+    margin: 4px;
+  }
+  #intro{
+    font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    font-weight: 800;
+  }
+  </style>
+
+<script>
+    const ws = new WebSocket('ws://localhost:8080');
+    
+    function getUrls(keyword) {
+    ws.send(JSON.stringify({type:'keyword', keyword:keyword}));
+    }
+    
+    // Если получили сообщение с url то для каждого url создаем кнопку для закачки
+    ws.onmessage = function(event) {
+    const message = JSON.parse(event.data);
+    if (message.type === 'urls'){
+        const urls = (message.content);
+        const urlsList = document.getElementById('urlsButtons')
+        urlsList.innerHTML = '';
+        
+        urls.forEach((url) => {
+            const container = document.createElement('div');
+            const downloadButton = document.createElement('button');
+            downloadButton.innerHTML = ('Скачать ' + url);
+            container.appendChild(downloadButton);
+            urlsList.appendChild(container);
+            downloadButton.addEventListener('click', function(getcontent) {
+                ws.send(JSON.stringify({type:'fetch',content: url}))
+                })
+            }   
+        )
+    }
+
+    // Если получили сообщение с типом контен, то сохраняем его в хранилище           
+    else if(message.type === 'content'){
+        function save(site){
+            let sites = JSON.parse(localStorage.getItem('content')) || [];
+            sites.push({content:site});
+            localStorage.setItem('content', JSON.stringify(sites)); 
+        }
+        save(message.content)
+ }
+    }
+
+    //Показываем содержимое LocalStorage с контентом
+    function show() {
+    const saved = JSON.parse(localStorage.getItem('content'));
+    if (Array.isArray(saved)) {
+        const show_div = document.getElementById('show');
+        show_div.innerHTML = ''
+        for (const page of saved) {
+            if (page) {
+                // Получаем значение Title из сохраненной страниц в localstorage
+                const temp_div = document.createElement('div')
+                temp_div.innerHTML = page.content;
+                title_el = temp_div.querySelector('title');
+                // Добавляем кнопку для отображения найденого контента 
+                show_button = document.createElement('button');
+                show_button.innerHTML = title_el.textContent;
+                show_div.appendChild(show_button)
+                show_button.addEventListener('click', function() {
+                    show_div.innerHTML='';
+                    const newIframe = document.createElement('iframe');
+                    newIframe.width = '600';
+                    newIframe.height = '400';
+                    newIframe.srcdoc = page.content;
+                    show_div.appendChild(newIframe);
+                    }
+                )
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  </script>
+  
+</body>
+</html>
